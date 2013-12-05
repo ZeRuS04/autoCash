@@ -251,21 +251,13 @@ function search($srch_collect, $srch_sql)
 				<td>
 				<form name = 'del' action = '/index.php' method = 'get'>
 						<input type='hidden' name='delnum' value='$delnum'> 
-						<input type = 'submit' widgth = 10 name = 'del' value = 'Удалить'>
+						<input type = 'submit' width = 10 name = 'del' value = 'Удалить'>
 					</form>
 				</td>
 				<tr>
 			";
 		}
 		echo "</table>";
-
-	/*
-			foreach ($line as $col_value) {
-				echo "\t\t<td>$col_value</td>\n";
-			}
-
-		echo "<td>управление</td>";
-			echo "</tr>";*/
 		echo '<center>';
 		navigate($pagename, $page, (int)$total);
 		echo '</center>';
