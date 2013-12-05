@@ -23,7 +23,7 @@ $query = "SELECT 	order_num, date,
 
 $srch_collect = array("№ заказ-наряда" => "order_num",
 						"Дата(гггг-мм-дд)" => "date",
-						"ФИО" => "driver_name",
+						"ФИО" => "name",
 						"№ Вод.удостоверения" => "license_num",
 						"№ Бригады" => "gang_num",
 						"Специализация бригады" => "specialization",
@@ -32,6 +32,15 @@ $srch_collect = array("№ заказ-наряда" => "order_num",
 						"Марка(модель)" => "model",
 						"Гос.номер" => "state_number",
 						"VIN" => "VIN");
+$srch_sql = array("order_num" => "order_num",
+						"date" => "date",
+						"name" => "driver.name",
+						"license_num" => "repair.license_num",
+						"gang_num" => "repair.gang_num",
+						"specialization" => "gang.specialization",
+						"model" => "auto.model",
+						"state_number" => "auto.state_number",
+						"VIN" => "repair.VIN");
 
 function navigate($pagename, $page, $total)
 {
@@ -51,17 +60,18 @@ function navigate($pagename, $page, $total)
 	echo $firstpage.$page2left.$pageleft.'<b>'.$page.'</b>'.$pageright.$page2right.$nextpage;
 }
 
-function search($srch_collect)
+function search($srch_collect, $srch_sql)
 {
 	$qr_where = " WHERE ";
 	foreach($srch_collect as $k => $v)
 	{
+//		echo 'key = '.$k.'; value = '.$v.'; sql_value = '.$srch_sql[$v].'<br>';
 		if(($_GET[$v]) && ($_GET[$v] != $k))
 		{
 			if(count($srch_arr) == 0)
-				$srch_arr[] = $v."='".$_GET[$v]."' ";
+				$srch_arr[] = $srch_sql[$v]."='".$_GET[$v]."' ";
 			else
-				$srch_arr[] = 'AND '.$v."='".$_GET[$v]."' ";
+				$srch_arr[] = 'AND '.$srch_sql[$v]."='".$_GET[$v]."' ";
 		}
 	}
 /*
@@ -85,7 +95,6 @@ function search($srch_collect)
 	{
 		$result = $result.$i;
 	}
-	echo 'result='.$result.'<br>';
 	if($result == "")
 		return "";
 	else
@@ -93,9 +102,15 @@ function search($srch_collect)
 }	
     $connect = mysql_connect($dbhost, $dbuser, $dbpass) or die ("Could not connect to host ...");	
     mysql_select_db($dbname) or die ("Could not select database student ...");
-    $where = search($srch_collect);
+    $where = search($srch_collect, $srch_sql);
     $query = $query.$where;
-    echo $where;
+    if($_GET[delnum])
+    {
+		$qr_del = "DELETE FROM parts_list WHERE order_num =".$_GET[delnum];
+		$result = mysql_query($qr_del) or die('query has dont work: ' . mysql_error());
+		$qr_del = "DELETE FROM repair WHERE order_num =".$_GET[delnum];
+		$result = mysql_query($qr_del) or die('query has dont work: ' . mysql_error());
+	}
 	$result = mysql_query($query) or die('query has dont work: ' . mysql_error());
 	while ($line1[] = mysql_fetch_array($result, MYSQL_ASSOC))
 //	echo 'count line1='.count($line1).'<br>';
@@ -110,13 +125,18 @@ function search($srch_collect)
 //	echo 'page='.$page.'<br>';
 //	echo 'start='.$start.'<br>';
 	$start = $page * $num - $num;
+	if($start < 0)
+		$start = 0;
 	$qr_limit = " LIMIT $start,$num";
-	
-	$qr_group = " GROUP BY ".$_GET[group_by];
+	if($_GET[group_by])
+		$qr_group = " GROUP BY ".$_GET[group_by];
+	else
+		$qr_group = "";
+		echo $_SERVER['REQUEST_URI'].'<br>';
 	echo $query.$qr_group.$qr_limit;
 	$result = mysql_query($query.$qr_group.$qr_limit) or die('query has dont work: ' . mysql_error());
 	while ($line[] = mysql_fetch_array($result, MYSQL_ASSOC))
-
+	
 ?>
 
 
@@ -138,107 +158,120 @@ function search($srch_collect)
 	<form name = "search" action = "/index.php" method = "get">
 	<pre>
 	Форма поиска: <br>
-	Ремонт:		<input type = "text" name = "order_num" value = "№ заказ-наряда">; <input type = "text" name = "date" value = "Дата(гггг-мм-дд)">;<br>
-	Водитель:	<input type = "text" name = "driver_name" value = "ФИО">; <input type = "text" name = "license_num" value = "№ Вод.удостоверения">;<br>
-	Бригада: 	<input type = "text" name = "gang_num" value = "№ Бригады">; <input type = "text" name = "specialization" value = "Специализация бригады">;<br>
-<!--	Приемщик: 	<input type = "text" name = "id_acceptor" value = "Id приемщика">; <input type = "text" name = "acceptor_name" value = "ФИО приемщика">;<br>	-->
-	Автомобиль: 	<input type = "text" name = "model" value = "Марка(модель)">; <input type = "text" name = "state_number" value = "Гос.номер">; <input type = "text" name = "VIN" value = "VIN">;<br>
+	Ремонт:		<input type = "text" name = "order_num" value = "№ заказ-наряда"  onclick="value=''">; <input type = "text" name = "date" value = "Дата(гггг-мм-дд)" onclick="value=''">;<br>
+	Водитель:	<input type = "text" name = "name" value = "ФИО" onclick="value=''">; <input type = "text" name = "license_num" value = "№ Вод.удостоверения" onclick="value=''">;<br>
+	Бригада: 	<input type = "text" name = "gang_num" value = "№ Бригады" onclick="value=''">; <input type = "text" name = "specialization" value = "Специализация бригады" onclick="value=''">;<br>
+	Автомобиль: 	<input type = "text" name = "model" value = "Марка(модель)" onclick="value=''">; <input type = "text" name = "state_number" value = "Гос.номер" onclick="value=''">; <input type = "text" name = "VIN" value = "VIN" onclick="value=''">;<br>
 	<input type = "submit" name = "add_auto" value = "Поиск">
 	</pre>	
 	</form>
 	
+	<form name = "add_repair" action = "/add_repair.php" method = "get">
+		
+	Добавить ремонт:	<input type = "submit" name = "add_repair" value = "Добавить">
+	</form>
 	<form name = "group_by" action = "/index.php" method = "get">
 	<pre>
-	Сортировать по:     <select name = "group_by" onchange="this.form.submit()">
-		<?php 	if($_GET[group_by] == "order_num" )
-					echo "<option value = 'order_num' selected>№ Заказ-наряда";
-				else
-					echo "<option value = 'order_num'>№ Заказ-наряда";
-				if($_GET[group_by] == "date" )
-					echo "<option value = 'date' selected>Дате";
-				else
-					echo "<option value = 'date'>Дате";
-				if($_GET[group_by] == "name" )
-					echo "<option value = 'name' selected>Имени водителя";
-				else
-					echo "<option value = 'name'>Имени водителя";
-				if($_GET[group_by] == "license_num" )
-					echo "<option value = 'license_num' selected>№ вод.удостоверения";
-				else
-					echo "<option value = 'license_num'>№ вод.удостоверения";
-				if($_GET[group_by] == "gang_num" )
-					echo "<option value = 'gang_num' selected>№ бригады";
-				else
-					echo "<option value = 'gang_num'>№ бригады";
-				if($_GET[group_by] == "specialization" )
-					echo "<option value = 'specialization' selected>Специализации";
-				else
-					echo "<option value = 'specialization'>Специализации";
-				if($_GET[group_by] == "model" )
-					echo "<option value = 'model' selected>Модели автомобиля";
-				else
-					echo "<option value = 'model'>Модели автомобиля";
-				if($_GET[group_by] == "state_number" )
-					echo "<option value = 'state_number' selected>Гос.номеру";
-				else
-					echo "<option value = 'state_number'>Гос.номеру";
-				if($_GET[group_by] == "VIN" )
-					echo "<option value = 'VIN' selected>VIN";
-				else
-					echo "<option value = 'VIN'>VIN";
-      ?>	
-    </select>
-	</pre>
-	</form>
-<?php
 	
-
-	echo "<table >\n";
-	echo "	<tr>\n	
-			<th>№ Заказ-наряда</th>
-			<th>Дата</th>
-			<th>Фио водителя</th>
-			<th>№ Вод. удостоверения</th>
-			<th>№ Бригады</th>
-			<th>Специализация</th>
-			<th>Модель автомобиля</th>
-			<th>Гос.номер</th>
-			<th>VIN</th>
-			<th>Кнопка</th>
-		</tr>\n";
-	
-    	echo "\t<tr>\n";
+<?php 
 	if($total < $num)
 		$num = $total;
-	for( $i = 0;  $i <$num; $i++)
+	if($total > 0)
 	{
-		echo "
-			<tr>
-			<td>".$line[$i]['order_num']."</td>
-			<td>".$line[$i]['date']."</td>
-			<td>".$line[$i]['name']."</td>
-			<td>".$line[$i]['license_num']."</td>
-			<td>".$line[$i]['gang_num']."</td>
-			<td>".$line[$i]['specialization']."</td>
-			<td>".$line[$i]['model']."</td>
-			<td>".$line[$i]['state_number']."</td>
-			<td>".$line[$i]['VIN']."</td>
-			
-			<tr>
-		";
+		echo "Сортировать по:     <select name = 'group_by' onchange='this.form.submit()'>";
+				if($_GET[group_by] == "order_num" )
+						echo "<option value = 'order_num' selected>№ Заказ-наряда";
+					else
+						echo "<option value = 'order_num'>№ Заказ-наряда";
+					if($_GET[group_by] == "date" )
+						echo "<option value = 'date' selected>Дате";
+					else
+						echo "<option value = 'date'>Дате";
+					if($_GET[group_by] == "name" )
+						echo "<option value = 'name' selected>Имени водителя";
+					else
+						echo "<option value = 'name'>Имени водителя";
+					if($_GET[group_by] == "license_num" )
+						echo "<option value = 'license_num' selected>№ вод.удостоверения";
+					else
+						echo "<option value = 'license_num'>№ вод.удостоверения";
+					if($_GET[group_by] == "gang_num" )
+						echo "<option value = 'gang_num' selected>№ бригады";
+					else
+						echo "<option value = 'gang_num'>№ бригады";
+					if($_GET[group_by] == "specialization" )
+						echo "<option value = 'specialization' selected>Специализации";
+					else
+						echo "<option value = 'specialization'>Специализации";
+					if($_GET[group_by] == "model" )
+						echo "<option value = 'model' selected>Модели автомобиля";
+					else
+						echo "<option value = 'model'>Модели автомобиля";
+					if($_GET[group_by] == "state_number" )
+						echo "<option value = 'state_number' selected>Гос.номеру";
+					else
+						echo "<option value = 'state_number'>Гос.номеру";
+					if($_GET[group_by] == "VIN" )
+						echo "<option value = 'VIN' selected>VIN";
+					else
+						echo "<option value = 'VIN'>VIN";
+		echo" 	</select>
+				</pre>
+				</form>";
+		echo "<table >\n";
+		echo "	<tr>\n	
+				<th>№ Заказ-наряда</th>
+				<th>Дата</th>
+				<th>Фио водителя</th>
+				<th>№ Вод. удостоверения</th>
+				<th>№ Бригады</th>
+				<th>Специализация</th>
+				<th>Модель автомобиля</th>
+				<th>Гос.номер</th>
+				<th>VIN</th>
+				<th>Кнопка</th>
+			</tr>\n";
+	
+    	echo "\t<tr>\n";
+
+		for( $i = 0;  $i <$num; $i++)
+		{
+			$delnum = $line[$i]['order_num'];
+			echo "
+				<tr>
+				<td>".$line[$i]['order_num']."</td>
+				<td>".$line[$i]['date']."</td>
+				<td>".$line[$i]['name']."</td>
+				<td>".$line[$i]['license_num']."</td>
+				<td>".$line[$i]['gang_num']."</td>
+				<td>".$line[$i]['specialization']."</td>
+				<td>".$line[$i]['model']."</td>
+				<td>".$line[$i]['state_number']."</td>
+				<td>".$line[$i]['VIN']."</td>
+				<td>
+				<form name = 'del' action = '/index.php' method = 'get'>
+						<input type='hidden' name='delnum' value='$delnum'> 
+						<input type = 'submit' widgth = 10 name = 'del' value = 'Удалить'>
+					</form>
+				</td>
+				<tr>
+			";
+		}
+		echo "</table>";
+
+	/*
+			foreach ($line as $col_value) {
+				echo "\t\t<td>$col_value</td>\n";
+			}
+
+		echo "<td>управление</td>";
+			echo "</tr>";*/
+		echo '<center>';
+		navigate($pagename, $page, (int)$total);
+		echo '</center>';
 	}
-	echo "</table>";
-
-/*
-    	foreach ($line as $col_value) {
-        	echo "\t\t<td>$col_value</td>\n";
-    	}
-
-	echo "<td>управление</td>";
-    	echo "</tr>";*/
-	echo '<center>';
-	navigate($pagename, $page, (int)$total);
-	echo '</center>';
+	else
+		echo "Нет ни одной записи.";
 ?>
 </body>
 </html>
