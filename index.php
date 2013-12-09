@@ -1,4 +1,5 @@
 <?php
+session_start();
 include "config.php"; 
 
 $pagename = 'index.php';
@@ -9,7 +10,15 @@ $dbpass = 'xtgjxtv';
 $dbname = 'db_auto';
 
 $num = 10;
-$page = $_GET["page"];
+
+if(isset($_GET["page"]))
+{
+	$page = $_GET["page"];
+	$_SESSION['page'] = $page;
+}
+elseif(isset($_SESSION['page']))
+	$page = $_SESSION['page'];
+	
 $query = "SELECT 	order_num, date, 
 					driver.name, repair.license_num, 
 					repair.gang_num, gang.specialization,
@@ -74,34 +83,31 @@ function search($srch_collect, $srch_sql)
 				$srch_arr[] = 'AND '.$srch_sql[$v]."='".$_GET[$v]."' ";
 		}
 	}
-/*
-	if(($_GET["order_num"]) && ($_GET["order_num"] != "№ заказ-наряда"))
-	{
-		if(count($srch_arr) == 0)
-			$srch_arr[] = 'order_num='.$_GET["order_num"].' ';
-		else
-			$srch_arr[] = 'AND order_num='.$_GET["order_num"].' ';
-	}
-	if(($_GET["date"]) and ($_GET["date"] != "Дата(гггг.мм.дд)"))
-	{
-		if(count($srch_arr) == 0)
-			$srch_arr[] = "repair.date='".$_GET["date"]."' " ;
-		else
-			$srch_arr[] = "AND repair.date='".$_GET["date"]."' ";
-	}
-	*/
+
 	$result = "";
 	foreach($srch_arr as $i)
 	{
 		$result = $result.$i;
 	}
+	if(isset($_GET[clearbut]))
+		unset($_SESSION['where']);
 	if($result == "")
-		return "";
+	{
+		if(isset($_SESSION['where']))
+			return $_SESSION['where'];
+		else
+			return "";
+	}
 	else
+	{
+		$_SESSION['where'] = $qr_where.$result;
 		return $qr_where.$result;
+	}
 }	
     $connect = mysql_connect($dbhost, $dbuser, $dbpass) or die ("Could not connect to host ...");	
     mysql_select_db($dbname) or die ("Could not select database student ...");
+    
+	
     $where = search($srch_collect, $srch_sql);
     $query = $query.$where;
     if($_GET[delnum])
@@ -117,8 +123,6 @@ function search($srch_collect, $srch_sql)
 	$total = ((count($line1)-1)/$num)+1;
 	
 	$page = intval($page);
-//	echo 'page='.$page.'<br>';
-//	echo 'total='.$total.'<br>';
 	if(empty($page) or $page < 0) $page = 1;
 		if($page > $total) $page = $total;
 //	echo 'num='.$num.'<br>';
@@ -128,13 +132,16 @@ function search($srch_collect, $srch_sql)
 	if($start < 0)
 		$start = 0;
 	$qr_limit = " LIMIT $start,$num";
-	if($_GET[group_by])
-		$qr_group = " GROUP BY ".$_GET[group_by];
+	if(isset($_GET[order_by]))
+		$qr_order_by = " ORDER BY ".$_GET[order_by];
+	elseif(isset($_SESSION['order_by']))
+		$qr_order_by = " ORDER BY ".$_SESSION['order_by'];
 	else
-		$qr_group = "";
-		echo $_SERVER['REQUEST_URI'].'<br>';
-	echo $query.$qr_group.$qr_limit;
-	$result = mysql_query($query.$qr_group.$qr_limit) or die('query has dont work: ' . mysql_error());
+		$qr_order_by = " ORDER BY order_num";
+		
+	echo $_SERVER['REQUEST_URI'].'<br>';
+	echo $query.$qr_order_by.$qr_limit;
+	$result = mysql_query($query.$qr_order_by.$qr_limit) or die('query has dont work: ' . mysql_error());
 	while ($line[] = mysql_fetch_array($result, MYSQL_ASSOC))
 	
 ?>
@@ -155,63 +162,79 @@ function search($srch_collect, $srch_sql)
 	</style>
 </head>
 <body>
-	<form name = "search" action = "/index.php" method = "get">
 	<pre>
-	Форма поиска: <br>
-	Ремонт:		<input type = "text" name = "order_num" value = "№ заказ-наряда"  onclick="value=''">; <input type = "text" name = "date" value = "Дата(гггг-мм-дд)" onclick="value=''">;<br>
-	Водитель:	<input type = "text" name = "name" value = "ФИО" onclick="value=''">; <input type = "text" name = "license_num" value = "№ Вод.удостоверения" onclick="value=''">;<br>
-	Бригада: 	<input type = "text" name = "gang_num" value = "№ Бригады" onclick="value=''">; <input type = "text" name = "specialization" value = "Специализация бригады" onclick="value=''">;<br>
-	Автомобиль: 	<input type = "text" name = "model" value = "Марка(модель)" onclick="value=''">; <input type = "text" name = "state_number" value = "Гос.номер" onclick="value=''">; <input type = "text" name = "VIN" value = "VIN" onclick="value=''">;<br>
-	<input type = "submit" name = "add_auto" value = "Поиск">
-	</pre>	
+	<form name = "search" action = "/index.php" method = "get">
+		Форма поиска: <br>
+		Ремонт:		<input type = "text" name = "order_num" value = "№ заказ-наряда"  onclick="value=''">; <input type = "text" name = "date" value = "Дата(гггг-мм-дд)" onclick="value=''">;<br>
+		Водитель:	<input type = "text" name = "name" value = "ФИО" onclick="value=''">; <input type = "text" name = "license_num" value = "№ Вод.удостоверения" onclick="value=''">;<br>
+		Бригада: 	<input type = "text" name = "gang_num" value = "№ Бригады" onclick="value=''">; <input type = "text" name = "specialization" value = "Специализация бригады" onclick="value=''">;<br>
+		Автомобиль: 	<input type = "text" name = "model" value = "Марка(модель)" onclick="value=''">; <input type = "text" name = "state_number" value = "Гос.номер" onclick="value=''">; <input type = "text" name = "VIN" value = "VIN" onclick="value=''">;<br>
+		<input type = "submit" name = "search_button" value = "Поиск"></form></pre>
+	<form name = "search_clr" action = "/index.php" method = "get">
+		<pre>
+		<input type = "submit" name = "clearbut" value = "Сбросить результаты поиска">
+		</pre>
 	</form>
+		
+	
 	
 	<form name = "add_repair" action = "/add_repair.php" method = "get">
 		
 	Добавить ремонт:	<input type = "submit" name = "add_repair" value = "Добавить">
 	</form>
-	<form name = "group_by" action = "/index.php" method = "get">
+	<form name = "order_by" action = "/index.php" method = "get">
 	<pre>
 	
 <?php 
-	if($total < $num)
-		$num = $total;
+	if(count($line1) < $num)
+		$end = count($line)-1;
+	else
+		$end = $num;
 	if($total > 0)
 	{
-		echo "Сортировать по:     <select name = 'group_by' onchange='this.form.submit()'>";
-				if($_GET[group_by] == "order_num" )
+		if(isset($_GET[order_by]))
+		{
+			$order_by = $_GET[order_by];
+			$_SESSION['order_by'] = $order_by;
+		}
+		elseif(isset($_SESSION['order_by']))
+			$order_by = $_SESSION['order_by'];
+			else
+				$order_by = "order_num";
+		echo "Сортировать по:     <select name = 'order_by' onchange='this.form.submit()'>";
+				if($order_by == "order_num" )
 						echo "<option value = 'order_num' selected>№ Заказ-наряда";
 					else
 						echo "<option value = 'order_num'>№ Заказ-наряда";
-					if($_GET[group_by] == "date" )
+					if($order_by == "date" )
 						echo "<option value = 'date' selected>Дате";
 					else
 						echo "<option value = 'date'>Дате";
-					if($_GET[group_by] == "name" )
+					if($order_by == "name" )
 						echo "<option value = 'name' selected>Имени водителя";
 					else
 						echo "<option value = 'name'>Имени водителя";
-					if($_GET[group_by] == "license_num" )
+					if($order_by == "license_num" )
 						echo "<option value = 'license_num' selected>№ вод.удостоверения";
 					else
 						echo "<option value = 'license_num'>№ вод.удостоверения";
-					if($_GET[group_by] == "gang_num" )
+					if($order_by == "gang_num" )
 						echo "<option value = 'gang_num' selected>№ бригады";
 					else
 						echo "<option value = 'gang_num'>№ бригады";
-					if($_GET[group_by] == "specialization" )
+					if($order_by == "specialization" )
 						echo "<option value = 'specialization' selected>Специализации";
 					else
 						echo "<option value = 'specialization'>Специализации";
-					if($_GET[group_by] == "model" )
+					if($order_by == "model" )
 						echo "<option value = 'model' selected>Модели автомобиля";
 					else
 						echo "<option value = 'model'>Модели автомобиля";
-					if($_GET[group_by] == "state_number" )
+					if($order_by == "state_number" )
 						echo "<option value = 'state_number' selected>Гос.номеру";
 					else
 						echo "<option value = 'state_number'>Гос.номеру";
-					if($_GET[group_by] == "VIN" )
+					if($order_by == "VIN" )
 						echo "<option value = 'VIN' selected>VIN";
 					else
 						echo "<option value = 'VIN'>VIN";
@@ -234,7 +257,7 @@ function search($srch_collect, $srch_sql)
 	
     	echo "\t<tr>\n";
 
-		for( $i = 0;  $i <$num; $i++)
+		for( $i = 0;  $i <$end; $i++)
 		{
 			$delnum = $line[$i]['order_num'];
 			echo "
